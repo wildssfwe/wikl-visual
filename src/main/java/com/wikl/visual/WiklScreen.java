@@ -10,11 +10,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class WiklScreen extends Screen {
-    private record Module(String name, String desc, BooleanSupplier get, Consumer<Boolean> set) {}
+    private record Module(String name, Supplier<String> desc, BooleanSupplier get, Consumer<Boolean> set, Runnable rightClick) {
+        Module(String name, String desc, BooleanSupplier get, Consumer<Boolean> set) {
+            this(name, () -> desc, get, set, null);
+        }
+    }
 
-    private static final String[] TABS = {"HUD", "Visual", "Theme"};
+    private static final String[] TABS = {"HUD", "Combat", "Visual", "Movement", "Theme"};
+    private static final int THEME_TAB = 4;
     private static final int SIDEBAR = 120;
     private static final int CARD_H = 40;
     private static final int CARD_GAP = 8;
@@ -31,9 +37,19 @@ public class WiklScreen extends Screen {
             new Module("Coordinates", "Show your XYZ position", () -> WiklSettings.coords, v -> WiklSettings.coords = v),
             new Module("Direction", "Show the direction you are facing", () -> WiklSettings.direction, v -> WiklSettings.direction = v)
     );
+    private final List<Module> combatModules = List.of(
+            new Module("Target highlight", "Outline and info panel for the mob or player you hit", () -> WiklSettings.target, v -> WiklSettings.target = v),
+            new Module("Trajectory", "Show where your pearl, wind charge or throwable lands", () -> WiklSettings.trajectory, v -> WiklSettings.trajectory = v),
+            new Module("Enemy trajectory", "Show where thrown or shot projectiles of others land", () -> WiklSettings.enemyTrajectory, v -> WiklSettings.enemyTrajectory = v)
+    );
     private final List<Module> visualModules = List.of(
+            new Module("Aspect ratio", () -> "Right click to change: " + WiklSettings.ASPECT_NAMES[WiklSettings.aspectIndex],
+                    () -> WiklSettings.aspectEnabled, v -> WiklSettings.aspectEnabled = v, WiklSettings::nextAspect),
             new Module("Menu animation", "Slide and fade when the menu opens", () -> WiklSettings.animations, v -> WiklSettings.animations = v),
             new Module("Accent pulse", "Animated glow on the menu header", () -> WiklSettings.pulse, v -> WiklSettings.pulse = v)
+    );
+    private final List<Module> movementModules = List.of(
+            new Module("Move in menus", "Walk while inventory or chests are open", () -> WiklSettings.invMove, v -> WiklSettings.invMove = v)
     );
 
     public WiklScreen() { super(Text.literal("wikl visual")); }
@@ -76,7 +92,9 @@ public class WiklScreen extends Screen {
         return 1f - (1f - t) * (1f - t) * (1f - t);
     }
 
-    private List<Module> currentModules() { return tab == 0 ? hudModules : visualModules; }
+    private List<Module> currentModules() {
+        return switch (tab) { case 0 -> hudModules; case 1 -> combatModules; case 2 -> visualModules; default -> movementModules; };
+    }
 
     private int cardsX1() { return left + SIDEBAR + 14; }
     private int cardsX2() { return left + panelW - 14; }
@@ -142,10 +160,10 @@ public class WiklScreen extends Screen {
 
         // content title
         ctx.drawText(textRenderer, TABS[tab], cardsX1(), T + 50, withAlpha(0xFFFFFFFF, p), true);
-        String sub = tab == 0 ? "On-screen information" : tab == 1 ? "Menu visuals" : "Choose your accent color";
+        String sub = switch (tab) { case 0 -> "On-screen information"; case 1 -> "Fight helpers"; case 2 -> "Look and feel"; case 3 -> "Movement options"; default -> "Choose your accent color"; };
         ctx.drawText(textRenderer, sub, cardsX1(), T + 63, withAlpha(0xFF8A8A99, p), false);
 
-        if (tab == 2) renderThemeCards(ctx, mouseX, mouseY, p, oy, accent);
+        if (tab == THEME_TAB) renderThemeCards(ctx, mouseX, mouseY, p, oy, accent);
         else renderModuleCards(ctx, mouseX, mouseY, delta, p, oy, accent);
 
         // footer
@@ -168,7 +186,7 @@ public class WiklScreen extends Screen {
             rrect(ctx, x1, y, x2, y + CARD_H, withAlpha(hover ? 0xFF2A2A38 : 0xFF21212C, p));
             ctx.fill(x1, y + 4, x1 + 2, y + CARD_H - 4, withAlpha(lerp(0xFF444455, accent, a), p));
             ctx.drawText(textRenderer, m.name(), x1 + 14, y + 9, withAlpha(0xFFF0F0F8, p), false);
-            ctx.drawText(textRenderer, m.desc(), x1 + 14, y + 23, withAlpha(0xFF8A8A99, p), false);
+            ctx.drawText(textRenderer, m.desc().get(), x1 + 14, y + 23, withAlpha(0xFF8A8A99, p), false);
 
             // toggle switch
             int sw = 34, sh = 16;
@@ -198,12 +216,12 @@ public class WiklScreen extends Screen {
     // ---------- input ----------
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (button == 0) {
+        if (button == 0 || button == 1) {
             for (int i = 0; i < TABS.length; i++) {
                 int ty = top + 54 + i * 36;
                 if (inside(mx, my, left + 10, ty, left + SIDEBAR - 8, ty + 28)) { tab = i; return true; }
             }
-            if (tab == 2) {
+            if (tab == THEME_TAB) {
                 for (int i = 0; i < WiklSettings.ACCENTS.length; i++) {
                     int y = cardY(i);
                     if (inside(mx, my, cardsX1(), y, cardsX2(), y + CARD_H)) { WiklSettings.accentIndex = i; return true; }
@@ -214,7 +232,11 @@ public class WiklScreen extends Screen {
                     int y = cardY(i);
                     if (inside(mx, my, cardsX1(), y, cardsX2(), y + CARD_H)) {
                         Module m = mods.get(i);
-                        m.set().accept(!m.get().getAsBoolean());
+                        if (button == 1) {
+                            if (m.rightClick() != null) m.rightClick().run();
+                        } else {
+                            m.set().accept(!m.get().getAsBoolean());
+                        }
                         return true;
                     }
                 }

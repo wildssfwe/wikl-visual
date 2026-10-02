@@ -18,6 +18,11 @@ public class WiklVisual implements ClientModInitializer {
                 "key.wikl_visual.open_menu", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT,
                 "category.wikl_visual"));
 
+        TrajectoryRenderer.register();
+        TargetRenderer.register();
+
+        ClientTickEvents.START_CLIENT_TICK.register(InvMove::tick);
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openMenu.wasPressed()) {
                 if (client.currentScreen == null) client.setScreen(new WiklScreen());
@@ -27,6 +32,7 @@ public class WiklVisual implements ClientModInitializer {
         HudRenderCallback.EVENT.register((ctx, tickCounter) -> {
             MinecraftClient mc = MinecraftClient.getInstance();
             if (mc.player == null || mc.options.hudHidden || mc.currentScreen instanceof WiklScreen) return;
+            TargetRenderer.renderHud(ctx, mc);
             int accent = WiklSettings.accent();
             int y = 6;
             if (WiklSettings.watermark) {
