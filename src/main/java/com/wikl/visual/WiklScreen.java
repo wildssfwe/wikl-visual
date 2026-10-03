@@ -13,51 +13,72 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class WiklScreen extends Screen {
-    private record Module(String name, Supplier<String> desc, BooleanSupplier get, Consumer<Boolean> set, Runnable rightClick) {
+    private record Module(String name, Supplier<String> desc, BooleanSupplier get, Consumer<Boolean> set,
+                          Runnable rightClick, Runnable action) {
         Module(String name, String desc, BooleanSupplier get, Consumer<Boolean> set) {
-            this(name, () -> desc, get, set, null);
+            this(name, () -> desc, get, set, null, null);
+        }
+
+        Module(String name, Supplier<String> desc, BooleanSupplier get, Consumer<Boolean> set, Runnable rightClick) {
+            this(name, desc, get, set, rightClick, null);
         }
     }
 
-    private static final String[] TABS = {"HUD", "Combat", "Visual", "Movement", "Theme"};
+    private static final String[] TABS = {"HUD", "Бой", "Визуал", "Движение", "Тема"};
     private static final int THEME_TAB = 4;
-    private static final int SIDEBAR = 120;
+    private static final int SIDEBAR = 124;
     private static final int CARD_H = 40;
     private static final int CARD_GAP = 8;
 
     private final long openTime = Util.getMeasuringTimeMs();
+    private long tabTime = Util.getMeasuringTimeMs();
     private final Map<String, Float> toggleAnim = new HashMap<>();
-    private final Map<Integer, Float> tabHover = new HashMap<>();
-    private int tab = 0;
-    private int panelW = 460, panelH = 300, left, top;
+    private int tab;
+    private float scroll, scrollTarget, indRel = -1;
+    private int panelW = 500, panelH = 330, left, top;
 
     private final List<Module> hudModules = List.of(
-            new Module("Watermark", "Show the wikl visual logo on screen", () -> WiklSettings.watermark, v -> WiklSettings.watermark = v),
-            new Module("FPS counter", "Show your current FPS", () -> WiklSettings.fps, v -> WiklSettings.fps = v),
-            new Module("Coordinates", "Show your XYZ position", () -> WiklSettings.coords, v -> WiklSettings.coords = v),
-            new Module("Direction", "Show the direction you are facing", () -> WiklSettings.direction, v -> WiklSettings.direction = v)
+            new Module("Водяной знак", "Показывать логотип wikl visual на экране", () -> WiklSettings.watermark, v -> WiklSettings.watermark = v),
+            new Module("Счётчик FPS", "Показывать текущий FPS", () -> WiklSettings.fps, v -> WiklSettings.fps = v),
+            new Module("Координаты", "Показывать ваши координаты XYZ", () -> WiklSettings.coords, v -> WiklSettings.coords = v),
+            new Module("Направление", "Показывать, куда вы смотрите", () -> WiklSettings.direction, v -> WiklSettings.direction = v),
+            new Module("Клавиши и CPS", "Показывать нажатые WASD, пробел и клики мыши", () -> WiklSettings.keystrokes, v -> WiklSettings.keystrokes = v),
+            new Module("Эффекты", "Список эффектов с таймерами", () -> WiklSettings.effectsHud, v -> WiklSettings.effectsHud = v),
+            new Module("Редактор HUD", () -> "Нажмите, чтобы переместить клавиши, эффекты и панель HP",
+                    () -> false, v -> {}, null, this::openEditor)
     );
     private final List<Module> combatModules = List.of(
-            new Module("Target highlight", "Outline and info panel for the mob or player you hit", () -> WiklSettings.target, v -> WiklSettings.target = v),
-            new Module("Trajectory", "Show where your pearl, wind charge or throwable lands", () -> WiklSettings.trajectory, v -> WiklSettings.trajectory = v),
-            new Module("Enemy trajectory", "Show where thrown or shot projectiles of others land", () -> WiklSettings.enemyTrajectory, v -> WiklSettings.enemyTrajectory = v)
+            new Module("Таргет ESP", () -> "ПКМ - стиль: " + WiklSettings.ESP_NAMES[WiklSettings.espStyle],
+                    () -> WiklSettings.target, v -> WiklSettings.target = v, WiklSettings::nextEsp),
+            new Module("Цифры урона", "Всплывающие цифры урона над целью", () -> WiklSettings.damageNumbers, v -> WiklSettings.damageNumbers = v),
+            new Module("Анимация удара", () -> "ПКМ - сменить: " + WiklSettings.HIT_ANIM_NAMES[WiklSettings.hitAnimIndex],
+                    () -> WiklSettings.hitAnim, v -> WiklSettings.hitAnim = v, WiklSettings::nextHitAnim),
+            new Module("Траектория", "Полёт перла, ветра, лука и время до падения", () -> WiklSettings.trajectory, v -> WiklSettings.trajectory = v),
+            new Module("Траектория врага", "Куда летят снаряды других игроков", () -> WiklSettings.enemyTrajectory, v -> WiklSettings.enemyTrajectory = v)
     );
     private final List<Module> visualModules = List.of(
-            new Module("Aspect ratio", () -> "Right click to change: " + WiklSettings.ASPECT_NAMES[WiklSettings.aspectIndex],
+            new Module("Соотношение сторон", () -> "ПКМ - сменить: " + WiklSettings.ASPECT_NAMES[WiklSettings.aspectIndex],
                     () -> WiklSettings.aspectEnabled, v -> WiklSettings.aspectEnabled = v, WiklSettings::nextAspect),
-            new Module("Menu animation", "Slide and fade when the menu opens", () -> WiklSettings.animations, v -> WiklSettings.animations = v),
-            new Module("Accent pulse", "Animated glow on the menu header", () -> WiklSettings.pulse, v -> WiklSettings.pulse = v)
+            new Module("Анимация меню", "Плавное появление меню", () -> WiklSettings.animations, v -> WiklSettings.animations = v),
+            new Module("Пульсация", "Анимированная подсветка заголовка", () -> WiklSettings.pulse, v -> WiklSettings.pulse = v)
     );
     private final List<Module> movementModules = List.of(
-            new Module("Move in menus", "Walk while inventory or chests are open", () -> WiklSettings.invMove, v -> WiklSettings.invMove = v)
+            new Module("Ходьба в меню", "Двигаться при открытом инвентаре или сундуке", () -> WiklSettings.invMove, v -> WiklSettings.invMove = v)
     );
 
-    public WiklScreen() { super(Text.literal("wikl visual")); }
+    public WiklScreen() {
+        super(Text.literal("wikl visual"));
+        tab = Math.max(0, Math.min(TABS.length - 1, WiklSettings.lastTab));
+    }
+
+    private void openEditor() {
+        if (client != null) client.setScreen(new HudEditScreen(this));
+    }
 
     @Override
     protected void init() {
-        panelW = Math.min(460, width - 20);
-        panelH = Math.min(300, height - 20);
+        panelW = Math.min(500, width - 20);
+        panelH = Math.min(330, height - 20);
         left = (width - panelW) / 2;
         top = (height - panelH) / 2;
     }
@@ -86,6 +107,10 @@ public class WiklScreen extends Screen {
         return mx >= x1 && mx < x2 && my >= y1 && my < y2;
     }
 
+    private static double frac(double v) {
+        return v - Math.floor(v);
+    }
+
     private float progress() {
         if (!WiklSettings.animations) return 1f;
         float t = Math.min(1f, (Util.getMeasuringTimeMs() - openTime) / 250f);
@@ -93,124 +118,201 @@ public class WiklScreen extends Screen {
     }
 
     private List<Module> currentModules() {
-        return switch (tab) { case 0 -> hudModules; case 1 -> combatModules; case 2 -> visualModules; default -> movementModules; };
+        return switch (tab) {
+            case 0 -> hudModules;
+            case 1 -> combatModules;
+            case 2 -> visualModules;
+            default -> movementModules;
+        };
+    }
+
+    private int cardCount() {
+        return tab == THEME_TAB ? WiklSettings.ACCENTS.length : currentModules().size();
     }
 
     private int cardsX1() { return left + SIDEBAR + 14; }
-    private int cardsX2() { return left + panelW - 14; }
-    private int cardY(int i) { return top + 78 + i * (CARD_H + CARD_GAP); }
+    private int cardsX2() { return left + panelW - 20; }
+    private int viewTop() { return top + 72; }
+    private int viewBottom() { return top + panelH - 26; }
+    private int cardY(int i) { return viewTop() + 4 + i * (CARD_H + CARD_GAP) - (int) scroll; }
+
+    private float maxScroll() {
+        float content = cardCount() * (CARD_H + CARD_GAP) + 8;
+        return Math.max(0f, content - (viewBottom() - viewTop()));
+    }
+
+    private void switchTab(int i) {
+        tab = i;
+        WiklSettings.lastTab = i;
+        scroll = 0;
+        scrollTarget = 0;
+        tabTime = Util.getMeasuringTimeMs();
+    }
 
     // ---------- rendering ----------
     @Override
     public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        ctx.fill(0, 0, width, height, withAlpha(0xFF05050A, 0.55f * progress()));
+        // drawn in render()
     }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        super.render(ctx, mouseX, mouseY, delta);
         float p = progress();
         int accent = WiklSettings.accent();
         int oy = (int) ((1f - p) * 18);
         int T = top + oy;
         long now = Util.getMeasuringTimeMs();
 
-        // screen-corner logo (top-left)
+        // background dim + tint
+        ctx.fillGradient(0, 0, width, height, withAlpha(0xFF05050A, 0.72f * p),
+                withAlpha(lerp(0xFF05050A, accent, 0.22f), 0.78f * p));
+
+        // floating particles
+        for (int i = 0; i < 40; i++) {
+            double seed = i * 12.9898;
+            double px = frac(Math.sin(seed) * 43758.5453) * width + Math.sin(now * 0.0004 + i) * 10;
+            double py = frac(Math.cos(seed) * 24634.6345) * height - now * 0.012 * (0.4 + (i % 5) * 0.2);
+            py = ((py % height) + height) % height;
+            int s = (i % 3 == 0) ? 3 : 2;
+            ctx.fill((int) px, (int) py, (int) px + s, (int) py + s, withAlpha(accent, 0.30f * p));
+        }
+
+        // corner logo
         ctx.getMatrices().push();
         ctx.getMatrices().scale(2f, 2f, 1f);
         ctx.drawText(textRenderer, "wikl", 5, 4, withAlpha(accent, p), true);
         ctx.drawText(textRenderer, "visual", 5 + textRenderer.getWidth("wikl "), 4, withAlpha(0xFFFFFFFF, p), true);
         ctx.getMatrices().pop();
 
-        // panel shadow + body
-        rrect(ctx, left - 3, T - 3, left + panelW + 3, T + panelH + 3, withAlpha(accent, 0.18f * p));
-        rrect(ctx, left, T, left + panelW, T + panelH, withAlpha(0xFF14141C, p));
-        // sidebar
-        ctx.fill(left + 1, T + 40, left + SIDEBAR, T + panelH - 1, withAlpha(0xFF0E0E14, p));
-        // header
-        ctx.fill(left + 2, T + 1, left + panelW - 2, T + 38, withAlpha(0xFF0B0B11, p));
+        // glow + panel
+        for (int k = 4; k >= 1; k--) {
+            rrect(ctx, left - k * 2, T - k * 2, left + panelW + k * 2, T + panelH + k * 2, withAlpha(accent, 0.05f * p));
+        }
+        rrect(ctx, left, T, left + panelW, T + panelH, withAlpha(0xFF12121A, p));
+        ctx.fillGradient(left + 1, T + 40, left + panelW - 1, T + panelH - 1,
+                withAlpha(accent, 0.0f), withAlpha(accent, 0.12f * p));
+        ctx.fill(left + 1, T + 40, left + SIDEBAR, T + panelH - 1, withAlpha(0xFF0C0C12, 0.85f * p));
+        ctx.fill(left + SIDEBAR, T + 40, left + SIDEBAR + 1, T + panelH - 1, withAlpha(accent, 0.25f * p));
 
-        // animated accent line
+        // header
+        ctx.fillGradient(left + 2, T + 1, left + panelW - 2, T + 38,
+                withAlpha(accent, 0.32f * p), withAlpha(0xFF0B0B11, p));
         for (int x = 0; x < panelW - 4; x += 3) {
             float wave = WiklSettings.pulse ? (float) (0.5 + 0.5 * Math.sin(x * 0.035 - now * 0.004)) : 1f;
-            int c = lerp(withAlpha(accent, 0.35f * p), withAlpha(accent, p), wave);
+            int c = lerp(withAlpha(accent, 0.30f * p), withAlpha(accent, p), wave);
             ctx.fill(left + 2 + x, T + 38, Math.min(left + panelW - 2, left + 5 + x), T + 40, c);
         }
-
-        // header text
         ctx.getMatrices().push();
         ctx.getMatrices().scale(1.4f, 1.4f, 1f);
         ctx.drawText(textRenderer, "wikl", (int) ((left + 14) / 1.4f), (int) ((T + 11) / 1.4f), withAlpha(accent, p), true);
         ctx.drawText(textRenderer, "visual", (int) ((left + 14) / 1.4f) + textRenderer.getWidth("wikl "), (int) ((T + 11) / 1.4f), withAlpha(0xFFFFFFFF, p), true);
         ctx.getMatrices().pop();
-        ctx.drawText(textRenderer, "v1.0.0", left + panelW - 14 - textRenderer.getWidth("v1.0.0"), T + 15, withAlpha(0xFF8A8A99, p), false);
+        ctx.drawText(textRenderer, "v1.1.0", left + panelW - 14 - textRenderer.getWidth("v1.1.0"), T + 15, withAlpha(0xFF9A9AAA, p), false);
 
-        // tabs
+        // tabs with sliding indicator
+        float targetInd = 54 + tab * 36;
+        if (indRel < 0) indRel = targetInd;
+        indRel += (targetInd - indRel) * Math.min(1f, 0.25f + delta * 0.1f);
+        rrect(ctx, left + 10, T + (int) indRel, left + SIDEBAR - 8, T + (int) indRel + 28, withAlpha(accent, 0.24f * p));
+        ctx.fill(left + 10, T + (int) indRel + 5, left + 13, T + (int) indRel + 23, withAlpha(accent, p));
         for (int i = 0; i < TABS.length; i++) {
             int ty = T + 54 + i * 36;
             boolean hover = inside(mouseX, mouseY, left + 10, ty, left + SIDEBAR - 8, ty + 28);
-            float h = tabHover.getOrDefault(i, 0f);
-            h += ((hover || i == tab) ? 1f - h : -h) * Math.min(1f, delta * 0.35f);
-            tabHover.put(i, h);
-            int bg = lerp(withAlpha(0xFF1A1A24, p), withAlpha(0xFF272735, p), h);
-            rrect(ctx, left + 10, ty, left + SIDEBAR - 8, ty + 28, bg);
-            if (i == tab) ctx.fill(left + 10, ty + 5, left + 13, ty + 23, withAlpha(accent, p));
-            ctx.drawText(textRenderer, TABS[i], left + 24, ty + 10, withAlpha(i == tab ? 0xFFFFFFFF : 0xFFB0B0C0, p), false);
+            if (hover && i != tab) rrect(ctx, left + 10, ty, left + SIDEBAR - 8, ty + 28, withAlpha(0xFFFFFFFF, 0.07f * p));
+            int tc = i == tab ? 0xFFFFFFFF : hover ? 0xFFE0E0F0 : 0xFFA8A8BC;
+            ctx.drawText(textRenderer, TABS[i], left + 24, ty + 10, withAlpha(tc, p), false);
         }
 
         // content title
-        ctx.drawText(textRenderer, TABS[tab], cardsX1(), T + 50, withAlpha(0xFFFFFFFF, p), true);
-        String sub = switch (tab) { case 0 -> "On-screen information"; case 1 -> "Fight helpers"; case 2 -> "Look and feel"; case 3 -> "Movement options"; default -> "Choose your accent color"; };
-        ctx.drawText(textRenderer, sub, cardsX1(), T + 63, withAlpha(0xFF8A8A99, p), false);
+        ctx.drawText(textRenderer, TABS[tab], cardsX1(), T + 46, withAlpha(0xFFFFFFFF, p), true);
+        String sub = switch (tab) {
+            case 0 -> "Информация на экране";
+            case 1 -> "Помощь в бою";
+            case 2 -> "Внешний вид";
+            case 3 -> "Движение";
+            default -> "Выберите цвет темы";
+        };
+        ctx.drawText(textRenderer, sub, cardsX1(), T + 59, withAlpha(0xFF8A8A99, p), false);
 
-        if (tab == THEME_TAB) renderThemeCards(ctx, mouseX, mouseY, p, oy, accent);
-        else renderModuleCards(ctx, mouseX, mouseY, delta, p, oy, accent);
+        // scroll smoothing
+        scrollTarget = Math.max(0f, Math.min(maxScroll(), scrollTarget));
+        scroll += (scrollTarget - scroll) * 0.3f;
+
+        // cards
+        ctx.enableScissor(cardsX1() - 4, viewTop() + oy, cardsX2() + 4, viewBottom() + oy);
+        for (int i = 0; i < cardCount(); i++) {
+            float cp = Math.max(0f, Math.min(1f, (now - tabTime - i * 50L) / 220f));
+            float ease = 1f - (1f - cp) * (1f - cp) * (1f - cp);
+            int slide = (int) ((1f - ease) * 30);
+            int y = cardY(i) + oy;
+            if (y + CARD_H < viewTop() + oy || y > viewBottom() + oy) continue;
+            if (tab == THEME_TAB) renderThemeCard(ctx, mouseX, mouseY, i, y, slide, p * ease, accent);
+            else renderModuleCard(ctx, mouseX, mouseY, delta, i, y, slide, p * ease, accent);
+        }
+        ctx.disableScissor();
+
+        // scrollbar
+        float ms = maxScroll();
+        if (ms > 0) {
+            int trackTop = viewTop() + oy, trackH = viewBottom() - viewTop();
+            int barH = Math.max(18, (int) (trackH * trackH / (trackH + ms)));
+            int barY = trackTop + (int) ((trackH - barH) * (scroll / ms));
+            ctx.fill(left + panelW - 12, trackTop, left + panelW - 9, trackTop + trackH, withAlpha(0xFFFFFFFF, 0.06f * p));
+            ctx.fill(left + panelW - 12, barY, left + panelW - 9, barY + barH, withAlpha(accent, 0.85f * p));
+        }
 
         // footer
-        ctx.drawText(textRenderer, "Right Shift: open   ESC: close", left + 14, T + panelH - 14, withAlpha(0xFF6C6C7C, p), false);
+        ctx.fill(left + 1, T + panelH - 22, left + panelW - 1, T + panelH - 21, withAlpha(0xFFFFFFFF, 0.05f * p));
+        ctx.drawText(textRenderer, "ЛКМ - вкл/выкл   ПКМ - настройка   Колесо - прокрутка   Правый Shift / ESC - закрыть",
+                left + 14, T + panelH - 14, withAlpha(0xFF6C6C7C, p), false);
     }
 
-    private void renderModuleCards(DrawContext ctx, int mx, int my, float delta, float p, int oy, int accent) {
+    private void renderModuleCard(DrawContext ctx, int mx, int my, float delta, int i, int y, int slide, float p, int accent) {
         List<Module> mods = currentModules();
-        for (int i = 0; i < mods.size(); i++) {
-            Module m = mods.get(i);
-            int y = cardY(i) + oy;
-            int x1 = cardsX1(), x2 = cardsX2();
-            boolean hover = inside(mx, my, x1, y, x2, y + CARD_H);
-            boolean on = m.get().getAsBoolean();
+        Module m = mods.get(i);
+        int x1 = cardsX1() + slide, x2 = cardsX2() + slide;
+        boolean hover = inside(mx, my, cardsX1(), cardCardY(i), cardsX2(), cardCardY(i) + CARD_H)
+                && my >= viewTop() && my < viewBottom();
+        boolean on = m.get().getAsBoolean();
 
-            float a = toggleAnim.getOrDefault(m.name(), on ? 1f : 0f);
-            a += ((on ? 1f : 0f) - a) * Math.min(1f, delta * 0.4f);
-            toggleAnim.put(m.name(), a);
+        float a = toggleAnim.getOrDefault(m.name(), on ? 1f : 0f);
+        a += ((on ? 1f : 0f) - a) * Math.min(1f, 0.25f + delta * 0.1f);
+        toggleAnim.put(m.name(), a);
 
-            rrect(ctx, x1, y, x2, y + CARD_H, withAlpha(hover ? 0xFF2A2A38 : 0xFF21212C, p));
-            ctx.fill(x1, y + 4, x1 + 2, y + CARD_H - 4, withAlpha(lerp(0xFF444455, accent, a), p));
-            ctx.drawText(textRenderer, m.name(), x1 + 14, y + 9, withAlpha(0xFFF0F0F8, p), false);
-            ctx.drawText(textRenderer, m.desc().get(), x1 + 14, y + 23, withAlpha(0xFF8A8A99, p), false);
+        if (hover) rrect(ctx, x1 - 1, y - 1, x2 + 1, y + CARD_H + 1, withAlpha(accent, 0.22f * p));
+        rrect(ctx, x1, y, x2, y + CARD_H, withAlpha(hover ? 0xFF2A2A38 : 0xFF1F1F2A, p));
+        ctx.fill(x1, y + 4, x1 + 2, y + CARD_H - 4, withAlpha(lerp(0xFF444455, accent, a), p));
+        ctx.drawText(textRenderer, m.name(), x1 + 14, y + 9, withAlpha(0xFFF0F0F8, p), false);
+        ctx.drawText(textRenderer, m.desc().get(), x1 + 14, y + 23, withAlpha(0xFF8A8A99, p), false);
 
-            // toggle switch
-            int sw = 34, sh = 16;
-            int sx = x2 - sw - 14, sy = y + (CARD_H - sh) / 2;
+        int sw = 34, sh = 16;
+        int sx = x2 - sw - 14, sy = y + (CARD_H - sh) / 2;
+        if (m.action() != null) {
+            ctx.drawText(textRenderer, ">", x2 - 20, y + 16, withAlpha(accent, p), true);
+        } else {
             rrect(ctx, sx, sy, sx + sw, sy + sh, withAlpha(lerp(0xFF3A3A48, accent, a), p));
             int kx = sx + 2 + (int) ((sw - sh) * a);
             rrect(ctx, kx, sy + 2, kx + sh - 4, sy + sh - 2, withAlpha(0xFFFFFFFF, p));
+            if (m.rightClick() != null) {
+                String chip = "ПКМ";
+                ctx.drawText(textRenderer, chip, sx - 8 - textRenderer.getWidth(chip), y + 16, withAlpha(accent, 0.9f * p), false);
+            }
         }
     }
 
-    private void renderThemeCards(DrawContext ctx, int mx, int my, float p, int oy, int accent) {
-        for (int i = 0; i < WiklSettings.ACCENTS.length; i++) {
-            int y = cardY(i) + oy;
-            if (y + CARD_H > top + panelH + oy - 22) break;
-            int x1 = cardsX1(), x2 = cardsX2();
-            boolean hover = inside(mx, my, x1, y, x2, y + CARD_H);
-            boolean sel = i == WiklSettings.accentIndex;
-            int col = WiklSettings.ACCENTS[i];
-            rrect(ctx, x1, y, x2, y + CARD_H, withAlpha(hover ? 0xFF2A2A38 : 0xFF21212C, p));
-            ctx.fill(x1, y + 4, x1 + 2, y + CARD_H - 4, withAlpha(col, p));
-            rrect(ctx, x1 + 14, y + 10, x1 + 34, y + 30, withAlpha(col, p));
-            ctx.drawText(textRenderer, WiklSettings.ACCENT_NAMES[i], x1 + 44, y + 16, withAlpha(0xFFF0F0F8, p), false);
-            if (sel) ctx.drawText(textRenderer, "Selected", x2 - 14 - textRenderer.getWidth("Selected"), y + 16, withAlpha(col, p), false);
-        }
+    private int cardCardY(int i) { return cardY(i); }
+
+    private void renderThemeCard(DrawContext ctx, int mx, int my, int i, int y, int slide, float p, int accent) {
+        int x1 = cardsX1() + slide, x2 = cardsX2() + slide;
+        boolean hover = inside(mx, my, cardsX1(), cardY(i), cardsX2(), cardY(i) + CARD_H) && my >= viewTop() && my < viewBottom();
+        boolean sel = i == WiklSettings.accentIndex;
+        int col = WiklSettings.ACCENTS[i];
+        if (hover || sel) rrect(ctx, x1 - 1, y - 1, x2 + 1, y + CARD_H + 1, withAlpha(col, 0.25f * p));
+        rrect(ctx, x1, y, x2, y + CARD_H, withAlpha(hover ? 0xFF2A2A38 : 0xFF1F1F2A, p));
+        ctx.fill(x1, y + 4, x1 + 2, y + CARD_H - 4, withAlpha(col, p));
+        rrect(ctx, x1 + 14, y + 10, x1 + 34, y + 30, withAlpha(col, p));
+        ctx.drawText(textRenderer, WiklSettings.ACCENT_NAMES[i], x1 + 44, y + 16, withAlpha(0xFFF0F0F8, p), false);
+        if (sel) ctx.drawText(textRenderer, "Выбрано", x2 - 14 - textRenderer.getWidth("Выбрано"), y + 16, withAlpha(col, p), false);
     }
 
     // ---------- input ----------
@@ -219,30 +321,51 @@ public class WiklScreen extends Screen {
         if (button == 0 || button == 1) {
             for (int i = 0; i < TABS.length; i++) {
                 int ty = top + 54 + i * 36;
-                if (inside(mx, my, left + 10, ty, left + SIDEBAR - 8, ty + 28)) { tab = i; return true; }
-            }
-            if (tab == THEME_TAB) {
-                for (int i = 0; i < WiklSettings.ACCENTS.length; i++) {
-                    int y = cardY(i);
-                    if (inside(mx, my, cardsX1(), y, cardsX2(), y + CARD_H)) { WiklSettings.accentIndex = i; return true; }
+                if (inside(mx, my, left + 10, ty, left + SIDEBAR - 8, ty + 28)) {
+                    if (i != tab) switchTab(i);
+                    return true;
                 }
-            } else {
-                List<Module> mods = currentModules();
-                for (int i = 0; i < mods.size(); i++) {
-                    int y = cardY(i);
-                    if (inside(mx, my, cardsX1(), y, cardsX2(), y + CARD_H)) {
-                        Module m = mods.get(i);
-                        if (button == 1) {
-                            if (m.rightClick() != null) m.rightClick().run();
-                        } else {
-                            m.set().accept(!m.get().getAsBoolean());
+            }
+            if (my >= viewTop() && my < viewBottom()) {
+                if (tab == THEME_TAB) {
+                    for (int i = 0; i < WiklSettings.ACCENTS.length; i++) {
+                        int y = cardY(i);
+                        if (inside(mx, my, cardsX1(), y, cardsX2(), y + CARD_H)) {
+                            WiklSettings.accentIndex = i;
+                            return true;
                         }
-                        return true;
+                    }
+                } else {
+                    List<Module> mods = currentModules();
+                    for (int i = 0; i < mods.size(); i++) {
+                        int y = cardY(i);
+                        if (inside(mx, my, cardsX1(), y, cardsX2(), y + CARD_H)) {
+                            Module m = mods.get(i);
+                            if (button == 1) {
+                                if (m.rightClick() != null) m.rightClick().run();
+                            } else if (m.action() != null) {
+                                m.action().run();
+                            } else {
+                                m.set().accept(!m.get().getAsBoolean());
+                            }
+                            return true;
+                        }
                     }
                 }
             }
         }
         return super.mouseClicked(mx, my, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double horizontal, double vertical) {
+        scrollTarget = Math.max(0f, Math.min(maxScroll(), scrollTarget - (float) vertical * 26f));
+        return true;
+    }
+
+    @Override
+    public void removed() {
+        WiklConfig.save();
     }
 
     @Override

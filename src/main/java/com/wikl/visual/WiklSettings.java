@@ -13,9 +13,23 @@ public final class WiklSettings {
     public static boolean invMove = false;
     public static boolean aspectEnabled = false;
     public static int aspectIndex = 0;
+    public static boolean keystrokes = true;
+    public static boolean effectsHud = true;
+    public static boolean damageNumbers = true;
+    public static boolean hitAnim = true;
+    public static int hitAnimIndex = 0;
+    public static int espStyle = 2;
+    public static int lastTab = 0;
     public static int accentIndex = 0;
 
-    public static final String[] ACCENT_NAMES = {"Purple", "Blue", "Pink", "Green"};
+    public static final String[] HIT_ANIM_NAMES = {"Крит", "Звёзды", "Огонь", "Сердца", "Тотем", "Кольцо"};
+    public static final String[] ESP_NAMES = {"Рамка", "Кольцо", "Рамка + кольцо"};
+    public static final double[] DEF_HUD_X = {0.53, 0.01, 0.86};
+    public static final double[] DEF_HUD_Y = {0.56, 0.42, 0.20};
+    public static final double[] HUD_X = {0.53, 0.01, 0.86};
+    public static final double[] HUD_Y = {0.56, 0.42, 0.20};
+
+    public static final String[] ACCENT_NAMES = {"Фиолетовый", "Синий", "Розовый", "Зелёный"};
     public static final int[] ACCENTS = {0xFF922BFF, 0xFF2B8CFF, 0xFFFF2BA6, 0xFF2BFF8A};
 
     public static final String[] ASPECT_NAMES = {
@@ -26,6 +40,8 @@ public final class WiklSettings {
 
     public static int accent() { return ACCENTS[accentIndex]; }
     public static float targetAspect() { return ASPECTS[aspectIndex]; }
+    public static void nextHitAnim() { hitAnimIndex = (hitAnimIndex + 1) % HIT_ANIM_NAMES.length; }
+    public static void nextEsp() { espStyle = (espStyle + 1) % ESP_NAMES.length; }
     public static void nextAspect() { aspectIndex = (aspectIndex + 1) % ASPECTS.length; }
 
     private WiklSettings() {}

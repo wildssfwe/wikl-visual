@@ -12,16 +12,30 @@ import org.lwjgl.glfw.GLFW;
 public class WiklVisual implements ClientModInitializer {
     private static KeyBinding openMenu;
 
+    private static String dirName(String d) {
+        return switch (d) {
+            case "north" -> "север";
+            case "south" -> "юг";
+            case "east" -> "восток";
+            case "west" -> "запад";
+            default -> d;
+        };
+    }
+
     @Override
     public void onInitializeClient() {
+        WiklConfig.load();
+
         openMenu = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.wikl_visual.open_menu", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT,
                 "category.wikl_visual"));
 
         TrajectoryRenderer.register();
         TargetRenderer.register();
+        DamageNumbers.register();
 
         ClientTickEvents.START_CLIENT_TICK.register(InvMove::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(DamageNumbers::tick);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openMenu.wasPressed()) {
@@ -31,8 +45,11 @@ public class WiklVisual implements ClientModInitializer {
 
         HudRenderCallback.EVENT.register((ctx, tickCounter) -> {
             MinecraftClient mc = MinecraftClient.getInstance();
-            if (mc.player == null || mc.options.hudHidden || mc.currentScreen instanceof WiklScreen) return;
-            TargetRenderer.renderHud(ctx, mc);
+            if (mc.player == null || mc.options.hudHidden
+                    || mc.currentScreen instanceof WiklScreen || mc.currentScreen instanceof HudEditScreen) return;
+
+            int sw = ctx.getScaledWindowWidth();
+            int sh = ctx.getScaledWindowHeight();
             int accent = WiklSettings.accent();
             int y = 6;
             if (WiklSettings.watermark) {
@@ -49,8 +66,18 @@ public class WiklVisual implements ClientModInitializer {
                 ctx.drawText(mc.textRenderer, c, 6, y, 0xFFFFFFFF, true); y += 11;
             }
             if (WiklSettings.direction) {
-                ctx.drawText(mc.textRenderer, "Facing: " + mc.player.getHorizontalFacing().asString(), 6, y, 0xFFFFFFFF, true);
+                ctx.drawText(mc.textRenderer, "Смотрите: " + dirName(mc.player.getHorizontalFacing().asString()), 6, y, 0xFFFFFFFF, true);
             }
+
+            KeystrokesHud.poll(mc);
+            if (WiklSettings.keystrokes) {
+                KeystrokesHud.draw(ctx, mc, HudLayout.x(HudLayout.KEYS, sw), HudLayout.y(HudLayout.KEYS, sh), false);
+            }
+            if (WiklSettings.effectsHud) {
+                EffectsHud.draw(ctx, mc, HudLayout.x(HudLayout.EFFECTS, sw), HudLayout.y(HudLayout.EFFECTS, sh), false);
+            }
+            TargetRenderer.renderHud(ctx, mc, HudLayout.x(HudLayout.TARGET, sw), HudLayout.y(HudLayout.TARGET, sh), false);
+            TrajectoryRenderer.renderHud(ctx, mc);
         });
     }
 }
