@@ -5,6 +5,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,8 +25,9 @@ public class WiklScreen extends Screen {
         }
     }
 
-    private static final String[] TABS = {"HUD", "Бой", "Визуал", "Движение", "Тема"};
-    private static final int THEME_TAB = 4;
+    private static final String[] TABS = {"HUD", "Бой", "Визуал", "Прицел", "Движение", "Тема", "Конфиги"};
+    private static final int THEME_TAB = 5;
+    private static final int CONFIG_TAB = 6;
     private static final int SIDEBAR = 124;
     private static final int CARD_H = 40;
     private static final int CARD_GAP = 8;
@@ -36,6 +38,11 @@ public class WiklScreen extends Screen {
     private int tab;
     private float scroll, scrollTarget, indRel = -1;
     private int panelW = 500, panelH = 330, left, top;
+    private List<String> configNames = new ArrayList<>();
+    private String statusText = "";
+    private long statusUntil;
+    private String pendingDelete;
+    private long pendingDeleteUntil;
 
     private final List<Module> hudModules = List.of(
             new Module("Водяной знак", "Показывать логотип wikl visual на экране", () -> WiklSettings.watermark, v -> WiklSettings.watermark = v),
@@ -59,16 +66,54 @@ public class WiklScreen extends Screen {
     private final List<Module> visualModules = List.of(
             new Module("Соотношение сторон", () -> "ПКМ - сменить: " + WiklSettings.ASPECT_NAMES[WiklSettings.aspectIndex],
                     () -> WiklSettings.aspectEnabled, v -> WiklSettings.aspectEnabled = v, WiklSettings::nextAspect),
+            new Module("Полная яркость", "В шахте и ночью всегда светло", () -> WiklSettings.fullbright, v -> WiklSettings.fullbright = v),
+            new Module("Без плохих эффектов", "Убирает тьму Вардена, слепоту и тошноту с экрана", () -> WiklSettings.noBadEffects, v -> WiklSettings.noBadEffects = v),
+            new Module("Плавная игра (FPS)", "Снимает лимит FPS, выключает V-Sync и тени мобов", () -> WiklSettings.smoothGame, v -> WiklSettings.smoothGame = v),
             new Module("Анимация меню", "Плавное появление меню", () -> WiklSettings.animations, v -> WiklSettings.animations = v),
             new Module("Пульсация", "Анимированная подсветка заголовка", () -> WiklSettings.pulse, v -> WiklSettings.pulse = v)
     );
+    private final List<Module> crosshairModules = List.of(
+            new Module("Свой прицел", () -> "ПКМ - стиль: " + WiklSettings.CROSS_NAMES[WiklSettings.crossStyle],
+                    () -> WiklSettings.customCrosshair, v -> WiklSettings.customCrosshair = v,
+                    () -> WiklSettings.crossStyle = WiklSettings.wrap(WiklSettings.crossStyle, 1, WiklSettings.CROSS_NAMES.length)),
+            new Module("Цвет", () -> "ЛКМ - дальше, ПКМ - назад: " + WiklSettings.CROSS_COLOR_NAMES[WiklSettings.crossColor],
+                    () -> false, v -> {},
+                    () -> WiklSettings.crossColor = WiklSettings.wrap(WiklSettings.crossColor, -1, WiklSettings.CROSS_COLORS.length),
+                    () -> WiklSettings.crossColor = WiklSettings.wrap(WiklSettings.crossColor, 1, WiklSettings.CROSS_COLORS.length)),
+            new Module("Размер", () -> "ЛКМ - больше, ПКМ - меньше: " + WiklSettings.CROSS_SIZES[WiklSettings.crossSizeIdx],
+                    () -> false, v -> {},
+                    () -> WiklSettings.crossSizeIdx = WiklSettings.wrap(WiklSettings.crossSizeIdx, -1, WiklSettings.CROSS_SIZES.length),
+                    () -> WiklSettings.crossSizeIdx = WiklSettings.wrap(WiklSettings.crossSizeIdx, 1, WiklSettings.CROSS_SIZES.length)),
+            new Module("Зазор", () -> "ЛКМ - больше, ПКМ - меньше: " + WiklSettings.CROSS_GAPS[WiklSettings.crossGapIdx],
+                    () -> false, v -> {},
+                    () -> WiklSettings.crossGapIdx = WiklSettings.wrap(WiklSettings.crossGapIdx, -1, WiklSettings.CROSS_GAPS.length),
+                    () -> WiklSettings.crossGapIdx = WiklSettings.wrap(WiklSettings.crossGapIdx, 1, WiklSettings.CROSS_GAPS.length)),
+            new Module("Толщина", () -> "ЛКМ - толще, ПКМ - тоньше: " + WiklSettings.CROSS_THICKS[WiklSettings.crossThickIdx],
+                    () -> false, v -> {},
+                    () -> WiklSettings.crossThickIdx = WiklSettings.wrap(WiklSettings.crossThickIdx, -1, WiklSettings.CROSS_THICKS.length),
+                    () -> WiklSettings.crossThickIdx = WiklSettings.wrap(WiklSettings.crossThickIdx, 1, WiklSettings.CROSS_THICKS.length)),
+            new Module("Обводка", "Чёрная обводка для лучшей видимости", () -> WiklSettings.crossOutline, v -> WiklSettings.crossOutline = v),
+            new Module("Центральная точка", "Маленькая точка в центре прицела", () -> WiklSettings.crossDot, v -> WiklSettings.crossDot = v)
+    );
     private final List<Module> movementModules = List.of(
-            new Module("Ходьба в меню", "Двигаться при открытом инвентаре или сундуке", () -> WiklSettings.invMove, v -> WiklSettings.invMove = v)
+            new Module("Ходьба в меню", "Двигаться при открытом инвентаре или сундуке", () -> WiklSettings.invMove, v -> WiklSettings.invMove = v),
+            new Module("Быстрая установка", "Блоки ставятся без задержки (в одиночной игре)", () -> WiklSettings.fastPlace, v -> WiklSettings.fastPlace = v),
+            new Module("Быстрая на серверах", "Включает и на серверах. Может привести к бану!", () -> WiklSettings.fastPlaceServers, v -> WiklSettings.fastPlaceServers = v)
     );
 
     public WiklScreen() {
         super(Text.literal("wikl visual"));
         tab = Math.max(0, Math.min(TABS.length - 1, WiklSettings.lastTab));
+        refreshConfigs();
+    }
+
+    private void refreshConfigs() {
+        configNames = WiklConfig.listProfiles();
+    }
+
+    private void status(String text) {
+        statusText = text;
+        statusUntil = Util.getMeasuringTimeMs() + 3500;
     }
 
     private void openEditor() {
@@ -81,6 +126,7 @@ public class WiklScreen extends Screen {
         panelH = Math.min(330, height - 20);
         left = (width - panelW) / 2;
         top = (height - panelH) / 2;
+        refreshConfigs();
     }
 
     // ---------- helpers ----------
@@ -122,11 +168,13 @@ public class WiklScreen extends Screen {
             case 0 -> hudModules;
             case 1 -> combatModules;
             case 2 -> visualModules;
+            case 3 -> crosshairModules;
             default -> movementModules;
         };
     }
 
     private int cardCount() {
+        if (tab == CONFIG_TAB) return 1 + configNames.size();
         return tab == THEME_TAB ? WiklSettings.ACCENTS.length : currentModules().size();
     }
 
@@ -144,6 +192,7 @@ public class WiklScreen extends Screen {
     private void switchTab(int i) {
         tab = i;
         WiklSettings.lastTab = i;
+        refreshConfigs();
         scroll = 0;
         scrollTarget = 0;
         tabTime = Util.getMeasuringTimeMs();
@@ -229,10 +278,21 @@ public class WiklScreen extends Screen {
             case 0 -> "Информация на экране";
             case 1 -> "Помощь в бою";
             case 2 -> "Внешний вид";
-            case 3 -> "Движение";
-            default -> "Выберите цвет темы";
+            case 3 -> "Свой прицел";
+            case 4 -> "Движение";
+            case 5 -> "Выберите цвет темы";
+            default -> "Сохранённые наборы настроек";
         };
         ctx.drawText(textRenderer, sub, cardsX1(), T + 59, withAlpha(0xFF8A8A99, p), false);
+
+        if (tab == 3) {
+            int bx = left + panelW - 78, by = T + 42;
+            ctx.fill(bx, by, bx + 52, by + 28, withAlpha(0xFF0A0A10, p));
+            ctx.fill(bx, by, bx + 52, by + 1, withAlpha(accent, 0.6f * p));
+            ctx.enableScissor(bx, by, bx + 52, by + 28);
+            CrosshairRenderer.draw(ctx, bx + 26, by + 14);
+            ctx.disableScissor();
+        }
 
         // scroll smoothing
         scrollTarget = Math.max(0f, Math.min(maxScroll(), scrollTarget));
@@ -246,7 +306,8 @@ public class WiklScreen extends Screen {
             int slide = (int) ((1f - ease) * 30);
             int y = cardY(i) + oy;
             if (y + CARD_H < viewTop() + oy || y > viewBottom() + oy) continue;
-            if (tab == THEME_TAB) renderThemeCard(ctx, mouseX, mouseY, i, y, slide, p * ease, accent);
+            if (tab == CONFIG_TAB) renderConfigCard(ctx, mouseX, mouseY, i, y, slide, p * ease, accent);
+            else if (tab == THEME_TAB) renderThemeCard(ctx, mouseX, mouseY, i, y, slide, p * ease, accent);
             else renderModuleCard(ctx, mouseX, mouseY, delta, i, y, slide, p * ease, accent);
         }
         ctx.disableScissor();
@@ -263,8 +324,12 @@ public class WiklScreen extends Screen {
 
         // footer
         ctx.fill(left + 1, T + panelH - 22, left + panelW - 1, T + panelH - 21, withAlpha(0xFFFFFFFF, 0.05f * p));
-        ctx.drawText(textRenderer, "ЛКМ - вкл/выкл   ПКМ - настройка   Колесо - прокрутка   Правый Shift / ESC - закрыть",
-                left + 14, T + panelH - 14, withAlpha(0xFF6C6C7C, p), false);
+        if (now < statusUntil) {
+            ctx.drawText(textRenderer, statusText, left + 14, T + panelH - 14, withAlpha(accent, p), false);
+        } else {
+            ctx.drawText(textRenderer, "ЛКМ - вкл/выкл   ПКМ - настройка   Колесо - прокрутка   Правый Shift / ESC - закрыть",
+                    left + 14, T + panelH - 14, withAlpha(0xFF6C6C7C, p), false);
+        }
     }
 
     private void renderModuleCard(DrawContext ctx, int mx, int my, float delta, int i, int y, int slide, float p, int accent) {
@@ -302,6 +367,44 @@ public class WiklScreen extends Screen {
 
     private int cardCardY(int i) { return cardY(i); }
 
+    private int configBtnX(int k) {
+        return cardsX2() - 8 - 50 - (2 - k) * 54;
+    }
+
+    private void renderConfigCard(DrawContext ctx, int mx, int my, int i, int y, int slide, float p, int accent) {
+        int x1 = cardsX1() + slide, x2 = cardsX2() + slide;
+        boolean hover = inside(mx, my, cardsX1(), cardY(i), cardsX2(), cardY(i) + CARD_H)
+                && my >= viewTop() && my < viewBottom();
+        if (hover) rrect(ctx, x1 - 1, y - 1, x2 + 1, y + CARD_H + 1, withAlpha(accent, 0.22f * p));
+        rrect(ctx, x1, y, x2, y + CARD_H, withAlpha(hover ? 0xFF2A2A38 : 0xFF1F1F2A, p));
+        ctx.fill(x1, y + 4, x1 + 2, y + CARD_H - 4, withAlpha(accent, p));
+
+        if (i == 0) {
+            ctx.drawText(textRenderer, "+ Создать конфиг", x1 + 14, y + 9, withAlpha(0xFFF0F0F8, p), false);
+            ctx.drawText(textRenderer, "Сохранить текущие настройки под своим именем", x1 + 14, y + 23, withAlpha(0xFF8A8A99, p), false);
+            ctx.drawText(textRenderer, ">", x2 - 20, y + 16, withAlpha(accent, p), true);
+            return;
+        }
+
+        String name = configNames.get(i - 1);
+        String shown = name.length() > 16 ? name.substring(0, 16) + ".." : name;
+        ctx.drawText(textRenderer, shown, x1 + 14, y + 9, withAlpha(0xFFF0F0F8, p), false);
+        ctx.drawText(textRenderer, "Свой конфиг", x1 + 14, y + 23, withAlpha(0xFF8A8A99, p), false);
+
+        long now = Util.getMeasuringTimeMs();
+        boolean pend = name.equals(pendingDelete) && now < pendingDeleteUntil;
+        String[] labels = {"Загр.", "Сохр.", pend ? "Точно?" : "Удал."};
+        int[] colors = {accent, 0xFF4C8CFF, 0xFFFF5555};
+        for (int k = 0; k < 3; k++) {
+            int bx = configBtnX(k) + slide, by = y + 12;
+            boolean bh = inside(mx, my, configBtnX(k), cardY(i) + 12, configBtnX(k) + 50, cardY(i) + 28)
+                    && my >= viewTop() && my < viewBottom();
+            rrect(ctx, bx, by, bx + 50, by + 16, withAlpha(colors[k], (bh ? 0.55f : 0.28f) * p));
+            ctx.drawText(textRenderer, labels[k], bx + (50 - textRenderer.getWidth(labels[k])) / 2, by + 4,
+                    withAlpha(0xFFFFFFFF, p), false);
+        }
+    }
+
     private void renderThemeCard(DrawContext ctx, int mx, int my, int i, int y, int slide, float p, int accent) {
         int x1 = cardsX1() + slide, x2 = cardsX2() + slide;
         boolean hover = inside(mx, my, cardsX1(), cardY(i), cardsX2(), cardY(i) + CARD_H) && my >= viewTop() && my < viewBottom();
@@ -327,6 +430,40 @@ public class WiklScreen extends Screen {
                 }
             }
             if (my >= viewTop() && my < viewBottom()) {
+                if (tab == CONFIG_TAB) {
+                    for (int i = 0; i < cardCount(); i++) {
+                        int y = cardY(i);
+                        if (!inside(mx, my, cardsX1(), y, cardsX2(), y + CARD_H)) continue;
+                        if (i == 0) {
+                            if (client != null) client.setScreen(new ConfigNameScreen(this));
+                            return true;
+                        }
+                        String name = configNames.get(i - 1);
+                        for (int k = 0; k < 3; k++) {
+                            int bx = configBtnX(k);
+                            if (!inside(mx, my, bx, y + 12, bx + 50, y + 28)) continue;
+                            long now = Util.getMeasuringTimeMs();
+                            if (k == 0) {
+                                status(WiklConfig.loadProfile(name) ? "Конфиг загружен: " + name : "Не удалось загрузить конфиг");
+                            } else if (k == 1) {
+                                status(WiklConfig.saveProfile(name) ? "Конфиг сохранён: " + name : "Не удалось сохранить конфиг");
+                            } else if (name.equals(pendingDelete) && now < pendingDeleteUntil) {
+                                WiklConfig.deleteProfile(name);
+                                pendingDelete = null;
+                                refreshConfigs();
+                                scrollTarget = Math.min(scrollTarget, maxScroll());
+                                status("Конфиг удалён: " + name);
+                            } else {
+                                pendingDelete = name;
+                                pendingDeleteUntil = now + 3000;
+                                status("Нажмите «Удал.» ещё раз для подтверждения");
+                            }
+                            return true;
+                        }
+                        return true;
+                    }
+                    return true;
+                }
                 if (tab == THEME_TAB) {
                     for (int i = 0; i < WiklSettings.ACCENTS.length; i++) {
                         int y = cardY(i);

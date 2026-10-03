@@ -4,6 +4,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +28,7 @@ public final class EffectsHud {
             rows.add(new Row("Слабость", "0:08", 0xFFFF5555, true));
         } else if (mc.player != null) {
             for (StatusEffectInstance inst : mc.player.getStatusEffects()) {
+                if (WiklSettings.fullbright && inst.isInfinite() && inst.getEffectType().equals(StatusEffects.NIGHT_VISION)) continue;
                 String name = inst.getEffectType().value().getName().getString();
                 if (inst.getAmplifier() > 0) name += " " + (inst.getAmplifier() + 1);
                 boolean inf = inst.isInfinite();

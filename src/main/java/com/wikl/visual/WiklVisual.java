@@ -33,8 +33,12 @@ public class WiklVisual implements ClientModInitializer {
         TrajectoryRenderer.register();
         TargetRenderer.register();
         DamageNumbers.register();
+        EffectCleaner.register();
 
         ClientTickEvents.START_CLIENT_TICK.register(InvMove::tick);
+        ClientTickEvents.START_CLIENT_TICK.register(FpsBoost::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(HitEffects::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(FastPlace::tick);
         ClientTickEvents.END_CLIENT_TICK.register(DamageNumbers::tick);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -67,6 +71,10 @@ public class WiklVisual implements ClientModInitializer {
             }
             if (WiklSettings.direction) {
                 ctx.drawText(mc.textRenderer, "Смотрите: " + dirName(mc.player.getHorizontalFacing().asString()), 6, y, 0xFFFFFFFF, true);
+            }
+
+            if (WiklSettings.customCrosshair && mc.currentScreen == null && mc.options.getPerspective().isFirstPerson()) {
+                CrosshairRenderer.draw(ctx, sw / 2, sh / 2);
             }
 
             KeystrokesHud.poll(mc);

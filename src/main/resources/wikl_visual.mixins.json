@@ -4,7 +4,9 @@
   "package": "com.wikl.visual.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "GameRendererMixin"
+    "GameRendererMixin",
+    "InGameHudMixin",
+    "MinecraftClientAccessor"
   ],
   "injectors": {
     "defaultRequire": 0
