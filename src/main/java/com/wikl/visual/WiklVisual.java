@@ -40,6 +40,7 @@ public class WiklVisual implements ClientModInitializer {
         ClientTickEvents.START_CLIENT_TICK.register(InvMove::tick);
         ClientTickEvents.START_CLIENT_TICK.register(FpsBoost::tick);
         ClientTickEvents.END_CLIENT_TICK.register(HitEffects::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(HitDetector::tick);
         ClientTickEvents.END_CLIENT_TICK.register(TargetAura::tick);
         ClientTickEvents.END_CLIENT_TICK.register(FastPlace::tick);
         ClientTickEvents.END_CLIENT_TICK.register(DamageNumbers::tick);

@@ -23,16 +23,26 @@ public final class TargetRenderer {
 
     public static void register() {
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
-            if (world.isClient() && entity instanceof LivingEntity le) {
-                target = le;
-                hitTime = Util.getMeasuringTimeMs();
-                WiklLog.attack(le);
-                DamageNumbers.onHit(le);
-                HitEffects.play(le);
-            }
+            if (world.isClient() && entity instanceof LivingEntity le) registerHit(le);
             return ActionResult.PASS;
         });
         WorldRenderEvents.AFTER_ENTITIES.register(TargetRenderer::renderWorld);
+    }
+
+    private static long lastRegMs;
+    private static int lastRegId = -1;
+
+    /** Called for every hit you land (from the attack event and from the backup detector). */
+    public static void registerHit(LivingEntity le) {
+        long now = Util.getMeasuringTimeMs();
+        if (le.getId() == lastRegId && now - lastRegMs < 350) return;
+        lastRegId = le.getId();
+        lastRegMs = now;
+        target = le;
+        hitTime = now;
+        WiklLog.attack(le);
+        DamageNumbers.onHit(le);
+        HitEffects.play(le);
     }
 
     /** The entity you hit recently, or null. */

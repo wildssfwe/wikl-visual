@@ -54,10 +54,13 @@ public final class HitEffects {
         };
     }
 
+    private static int plays;
+
     public static void play(Entity e) {
         if (!WiklSettings.hitAnim) return;
         ClientWorld w = MinecraftClient.getInstance().world;
         if (w == null) return;
+        if (++plays <= 5) WiklLog.LOG.info("hit effect #{} style {}", plays, WiklSettings.hitAnimIndex);
         Vec3d c = e.getPos().add(0, e.getHeight() * 0.6, 0);
         int style = WiklSettings.hitAnimIndex;
         switch (style) {
