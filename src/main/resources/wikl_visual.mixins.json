@@ -6,7 +6,8 @@
   "client": [
     "GameRendererMixin",
     "InGameHudMixin",
-    "MinecraftClientAccessor"
+    "MinecraftClientAccessor",
+    "LivingEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 0

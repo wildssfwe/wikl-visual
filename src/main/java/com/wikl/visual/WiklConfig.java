@@ -92,6 +92,10 @@ public final class WiklConfig {
         WiklSettings.smoothGame = b(p, "smoothGame", WiklSettings.smoothGame);
         WiklSettings.customCrosshair = b(p, "customCrosshair", WiklSettings.customCrosshair);
         WiklSettings.fastPlace = b(p, "fastPlace", WiklSettings.fastPlace);
+        WiklSettings.armorHud = b(p, "armorHud", WiklSettings.armorHud);
+        WiklSettings.aura = b(p, "aura", WiklSettings.aura);
+        WiklSettings.shieldStatus = b(p, "shieldStatus", WiklSettings.shieldStatus);
+        WiklSettings.auraStyle = i(p, "auraStyle", WiklSettings.auraStyle, WiklSettings.AURA_NAMES.length - 1);
         WiklSettings.fastPlaceServers = b(p, "fastPlaceServers", WiklSettings.fastPlaceServers);
         WiklSettings.crossStyle = i(p, "crossStyle", WiklSettings.crossStyle, WiklSettings.CROSS_NAMES.length - 1);
         WiklSettings.crossColor = i(p, "crossColor", WiklSettings.crossColor, WiklSettings.CROSS_COLORS.length - 1);
@@ -105,7 +109,7 @@ public final class WiklConfig {
         WiklSettings.hitAnimIndex = i(p, "hitAnimIndex", WiklSettings.hitAnimIndex, WiklSettings.HIT_ANIM_NAMES.length - 1);
         WiklSettings.espStyle = i(p, "espStyle", WiklSettings.espStyle, WiklSettings.ESP_NAMES.length - 1);
         WiklSettings.lastTab = i(p, "lastTab", WiklSettings.lastTab, 6);
-        for (int n = 0; n < 3; n++) {
+        for (int n = 0; n < WiklSettings.HUD_X.length; n++) {
             WiklSettings.HUD_X[n] = d(p, "hudX" + n, WiklSettings.HUD_X[n]);
             WiklSettings.HUD_Y[n] = d(p, "hudY" + n, WiklSettings.HUD_Y[n]);
         }
@@ -133,6 +137,10 @@ public final class WiklConfig {
         p.setProperty("smoothGame", String.valueOf(WiklSettings.smoothGame));
         p.setProperty("customCrosshair", String.valueOf(WiklSettings.customCrosshair));
         p.setProperty("fastPlace", String.valueOf(WiklSettings.fastPlace));
+        p.setProperty("armorHud", String.valueOf(WiklSettings.armorHud));
+        p.setProperty("aura", String.valueOf(WiklSettings.aura));
+        p.setProperty("shieldStatus", String.valueOf(WiklSettings.shieldStatus));
+        p.setProperty("auraStyle", String.valueOf(WiklSettings.auraStyle));
         p.setProperty("fastPlaceServers", String.valueOf(WiklSettings.fastPlaceServers));
         p.setProperty("crossStyle", String.valueOf(WiklSettings.crossStyle));
         p.setProperty("crossColor", String.valueOf(WiklSettings.crossColor));
@@ -146,7 +154,7 @@ public final class WiklConfig {
         p.setProperty("hitAnimIndex", String.valueOf(WiklSettings.hitAnimIndex));
         p.setProperty("espStyle", String.valueOf(WiklSettings.espStyle));
         p.setProperty("lastTab", String.valueOf(WiklSettings.lastTab));
-        for (int n = 0; n < 3; n++) {
+        for (int n = 0; n < WiklSettings.HUD_X.length; n++) {
             p.setProperty("hudX" + n, String.valueOf(WiklSettings.HUD_X[n]));
             p.setProperty("hudY" + n, String.valueOf(WiklSettings.HUD_Y[n]));
         }

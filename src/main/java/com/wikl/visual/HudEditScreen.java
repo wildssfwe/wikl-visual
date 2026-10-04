@@ -31,12 +31,13 @@ public class HudEditScreen extends Screen {
         ctx.drawCenteredTextWithShadow(textRenderer, "Перетаскивайте элементы мышью.  R - сбросить   ESC - готово",
                 width / 2, 26, 0xFFB0B0C0);
 
-        for (int id = 0; id < 3; id++) {
+        for (int id = 0; id < HudLayout.NAMES.length; id++) {
             int x = HudLayout.x(id, width);
             int y = HudLayout.y(id, height);
             if (id == HudLayout.TARGET) TargetRenderer.renderHud(ctx, mc, x, y, true);
             else if (id == HudLayout.KEYS) KeystrokesHud.draw(ctx, mc, x, y, true);
-            else EffectsHud.draw(ctx, mc, x, y, true);
+            else if (id == HudLayout.EFFECTS) EffectsHud.draw(ctx, mc, x, y, true);
+            else ArmorHud.draw(ctx, mc, x, y, true);
 
             int w = HudLayout.W[id], h = HudLayout.H[id];
             boolean hot = id == dragging || (dragging < 0 && mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h);
@@ -52,7 +53,7 @@ public class HudEditScreen extends Screen {
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (button == 0) {
-            for (int id = 2; id >= 0; id--) {
+            for (int id = HudLayout.NAMES.length - 1; id >= 0; id--) {
                 int x = HudLayout.x(id, width), y = HudLayout.y(id, height);
                 if (mx >= x && mx < x + HudLayout.W[id] && my >= y && my < y + HudLayout.H[id]) {
                     dragging = id;

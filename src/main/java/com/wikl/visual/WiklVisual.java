@@ -34,10 +34,12 @@ public class WiklVisual implements ClientModInitializer {
         TargetRenderer.register();
         DamageNumbers.register();
         EffectCleaner.register();
+        ShieldStatus.register();
 
         ClientTickEvents.START_CLIENT_TICK.register(InvMove::tick);
         ClientTickEvents.START_CLIENT_TICK.register(FpsBoost::tick);
         ClientTickEvents.END_CLIENT_TICK.register(HitEffects::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(TargetAura::tick);
         ClientTickEvents.END_CLIENT_TICK.register(FastPlace::tick);
         ClientTickEvents.END_CLIENT_TICK.register(DamageNumbers::tick);
 
@@ -83,6 +85,9 @@ public class WiklVisual implements ClientModInitializer {
             }
             if (WiklSettings.effectsHud) {
                 EffectsHud.draw(ctx, mc, HudLayout.x(HudLayout.EFFECTS, sw), HudLayout.y(HudLayout.EFFECTS, sh), false);
+            }
+            if (WiklSettings.armorHud) {
+                ArmorHud.draw(ctx, mc, HudLayout.x(HudLayout.ARMOR, sw), HudLayout.y(HudLayout.ARMOR, sh), false);
             }
             TargetRenderer.renderHud(ctx, mc, HudLayout.x(HudLayout.TARGET, sw), HudLayout.y(HudLayout.TARGET, sh), false);
             TrajectoryRenderer.renderHud(ctx, mc);

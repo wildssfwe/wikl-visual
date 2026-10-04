@@ -22,6 +22,10 @@ public final class WiklSettings {
     public static boolean smoothGame = false;
     public static boolean customCrosshair = false;
     public static boolean fastPlace = false;
+    public static boolean armorHud = true;
+    public static boolean aura = true;
+    public static boolean shieldStatus = true;
+    public static int auraStyle = 0;
     public static boolean fastPlaceServers = false;
     public static int crossStyle = 0;
     public static int crossColor = 0;
@@ -40,11 +44,12 @@ public final class WiklSettings {
     public static int accentIndex = 0;
 
     public static final String[] HIT_ANIM_NAMES = {"Крит", "Звёзды", "Огонь", "Сердца", "Тотем", "Кольцо", "Спираль", "Фейерверк", "Души", "Снег", "Молния", "Магия", "Вулкан", "Взрыв"};
+    public static final String[] AURA_NAMES = {"Искры", "Огонь", "Сердца", "Снег", "Души", "Звёзды", "Магия", "Дым"};
     public static final String[] ESP_NAMES = {"Рамка", "Кольцо", "Рамка + кольцо"};
-    public static final double[] DEF_HUD_X = {0.53, 0.01, 0.86};
-    public static final double[] DEF_HUD_Y = {0.56, 0.42, 0.20};
-    public static final double[] HUD_X = {0.53, 0.01, 0.86};
-    public static final double[] HUD_Y = {0.56, 0.42, 0.20};
+    public static final double[] DEF_HUD_X = {0.53, 0.01, 0.86, 0.90};
+    public static final double[] DEF_HUD_Y = {0.56, 0.42, 0.20, 0.62};
+    public static final double[] HUD_X = {0.53, 0.01, 0.86, 0.90};
+    public static final double[] HUD_Y = {0.56, 0.42, 0.20, 0.62};
 
     public static final String[] ACCENT_NAMES = {"Фиолетовый", "Синий", "Розовый", "Зелёный"};
     public static final int[] ACCENTS = {0xFF922BFF, 0xFF2B8CFF, 0xFFFF2BA6, 0xFF2BFF8A};
@@ -68,6 +73,7 @@ public final class WiklSettings {
     public static int accent() { return ACCENTS[accentIndex]; }
     public static float targetAspect() { return ASPECTS[aspectIndex]; }
     public static void nextHitAnim() { hitAnimIndex = (hitAnimIndex + 1) % HIT_ANIM_NAMES.length; }
+    public static void nextAura() { auraStyle = (auraStyle + 1) % AURA_NAMES.length; }
     public static void nextEsp() { espStyle = (espStyle + 1) % ESP_NAMES.length; }
     public static void nextAspect() { aspectIndex = (aspectIndex + 1) % ASPECTS.length; }
 

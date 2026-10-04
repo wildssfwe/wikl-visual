@@ -51,12 +51,16 @@ public class WiklScreen extends Screen {
             new Module("Направление", "Показывать, куда вы смотрите", () -> WiklSettings.direction, v -> WiklSettings.direction = v),
             new Module("Клавиши и CPS", "Показывать нажатые WASD, пробел и клики мыши", () -> WiklSettings.keystrokes, v -> WiklSettings.keystrokes = v),
             new Module("Эффекты", "Список эффектов с таймерами", () -> WiklSettings.effectsHud, v -> WiklSettings.effectsHud = v),
-            new Module("Редактор HUD", () -> "Нажмите, чтобы переместить клавиши, эффекты и панель HP",
+            new Module("Броня (Armor HUD)", "Показывать надетую броню и её прочность", () -> WiklSettings.armorHud, v -> WiklSettings.armorHud = v),
+            new Module("Редактор HUD", () -> "Нажмите, чтобы переместить клавиши, эффекты, броню и панель HP",
                     () -> false, v -> {}, null, this::openEditor)
     );
     private final List<Module> combatModules = List.of(
             new Module("Таргет ESP", () -> "ПКМ - стиль: " + WiklSettings.ESP_NAMES[WiklSettings.espStyle],
                     () -> WiklSettings.target, v -> WiklSettings.target = v, WiklSettings::nextEsp),
+            new Module("Частицы на цели", () -> "ПКМ - стиль: " + WiklSettings.AURA_NAMES[WiklSettings.auraStyle] + " (идут за целью)",
+                    () -> WiklSettings.aura, v -> WiklSettings.aura = v, WiklSettings::nextAura),
+            new Module("Статус щита врага", "Зелёный - щит готов, красный - сломан топором", () -> WiklSettings.shieldStatus, v -> WiklSettings.shieldStatus = v),
             new Module("Цифры урона", "Всплывающие цифры урона над целью", () -> WiklSettings.damageNumbers, v -> WiklSettings.damageNumbers = v),
             new Module("Анимация удара", () -> "ПКМ - сменить: " + WiklSettings.HIT_ANIM_NAMES[WiklSettings.hitAnimIndex],
                     () -> WiklSettings.hitAnim, v -> WiklSettings.hitAnim = v, WiklSettings::nextHitAnim),

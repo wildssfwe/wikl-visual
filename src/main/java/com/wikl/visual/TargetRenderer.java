@@ -34,6 +34,11 @@ public final class TargetRenderer {
         WorldRenderEvents.AFTER_ENTITIES.register(TargetRenderer::renderWorld);
     }
 
+    /** The entity you hit recently, or null. */
+    public static LivingEntity active() {
+        return current();
+    }
+
     private static LivingEntity current() {
         if (!WiklSettings.target || target == null) return null;
         if (target.isRemoved() || !target.isAlive() || Util.getMeasuringTimeMs() - hitTime > SHOW_MS) {

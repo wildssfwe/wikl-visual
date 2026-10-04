@@ -1,10 +1,10 @@
 package com.wikl.visual;
 
 public final class HudLayout {
-    public static final int TARGET = 0, KEYS = 1, EFFECTS = 2;
-    public static final String[] NAMES = {"Панель цели (HP)", "Клавиши", "Эффекты"};
-    public static final int[] W = {110, 72, 110};
-    public static final int[] H = {34, 87, 40};
+    public static final int TARGET = 0, KEYS = 1, EFFECTS = 2, ARMOR = 3;
+    public static final String[] NAMES = {"Панель цели (HP)", "Клавиши", "Эффекты", "Броня"};
+    public static final int[] W = {110, 72, 110, 64};
+    public static final int[] H = {34, 87, 40, 72};
 
     private HudLayout() {}
 
@@ -24,7 +24,7 @@ public final class HudLayout {
     }
 
     public static void resetAll() {
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < WiklSettings.HUD_X.length; i++) {
             WiklSettings.HUD_X[i] = WiklSettings.DEF_HUD_X[i];
             WiklSettings.HUD_Y[i] = WiklSettings.DEF_HUD_Y[i];
         }
