@@ -12,6 +12,7 @@ public abstract class LivingEntityMixin {
     /** Entity status 30 is sent when an axe disables a player's shield. */
     @Inject(method = "handleStatus", at = @At("HEAD"), require = 0)
     private void wikl$status(byte status, CallbackInfo ci) {
+        com.wikl.visual.WiklLog.mixinSeen(status);
         if (status == 30) ShieldStatus.markDisabled((LivingEntity) (Object) this);
     }
 }

@@ -29,6 +29,8 @@ public final class ShieldStatus {
 
     public static void markDisabled(Entity e) {
         DISABLED.put(e.getUuid(), Util.getMeasuringTimeMs() + DISABLE_MS);
+        WiklLog.LOG.info("shield disabled event for {}", e.getName().getString());
+        WiklLog.say("щит сломан у " + e.getName().getString());
     }
 
     private static long remainingMs(Entity e) {

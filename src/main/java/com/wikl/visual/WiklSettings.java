@@ -25,6 +25,7 @@ public final class WiklSettings {
     public static boolean armorHud = true;
     public static boolean aura = true;
     public static boolean shieldStatus = true;
+    public static boolean debug = false;
     public static int auraStyle = 0;
     public static boolean fastPlaceServers = false;
     public static int crossStyle = 0;

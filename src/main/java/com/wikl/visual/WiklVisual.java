@@ -25,6 +25,7 @@ public class WiklVisual implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         WiklConfig.load();
+        WiklLog.register();
 
         openMenu = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.wikl_visual.open_menu", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT,

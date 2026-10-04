@@ -31,12 +31,17 @@ public final class HitEffects {
 
     private HitEffects() {}
 
+    /** Spawns through the particle manager directly so the "Minimal" particle setting does not hide it. */
+    public static void spawn(ParticleEffect type, double x, double y, double z, double vx, double vy, double vz) {
+        MinecraftClient.getInstance().particleManager.addParticle(type, x, y, z, vx, vy, vz);
+    }
+
     private static void burst(ClientWorld w, ParticleEffect type, Vec3d c, int count, double speed) {
         for (int i = 0; i < count; i++) {
             double vx = (RND.nextDouble() - 0.5) * speed * 2;
             double vy = (RND.nextDouble() - 0.3) * speed * 2;
             double vz = (RND.nextDouble() - 0.5) * speed * 2;
-            w.addParticle(type, c.x, c.y, c.z, vx, vy, vz);
+            spawn(type, c.x, c.y, c.z, vx, vy, vz);
         }
     }
 
@@ -61,7 +66,7 @@ public final class HitEffects {
             case 2 -> burst(w, ParticleTypes.FLAME, c, 12, 0.1);
             case 3 -> {
                 for (int i = 0; i < 5; i++) {
-                    w.addParticle(ParticleTypes.HEART,
+                    spawn(ParticleTypes.HEART,
                             c.x + (RND.nextDouble() - 0.5) * 0.8, c.y + 0.4 + RND.nextDouble() * 0.4,
                             c.z + (RND.nextDouble() - 0.5) * 0.8, 0, 0.05, 0);
                 }
@@ -70,7 +75,7 @@ public final class HitEffects {
             case 5 -> {
                 for (int i = 0; i < 24; i++) {
                     double a = Math.PI * 2 * i / 24.0;
-                    w.addParticle(ParticleTypes.ENCHANTED_HIT,
+                    spawn(ParticleTypes.ENCHANTED_HIT,
                             c.x + Math.cos(a) * 0.6, c.y, c.z + Math.sin(a) * 0.6,
                             Math.cos(a) * 0.1, 0.02, Math.sin(a) * 0.1);
                 }
@@ -78,7 +83,7 @@ public final class HitEffects {
             case 7 -> burst(w, ParticleTypes.FIREWORK, c, 18, 0.25);
             case 8 -> {
                 for (int i = 0; i < 8; i++) {
-                    w.addParticle(ParticleTypes.SOUL,
+                    spawn(ParticleTypes.SOUL,
                             c.x + (RND.nextDouble() - 0.5) * 0.6, c.y - 0.3 + RND.nextDouble() * 0.5,
                             c.z + (RND.nextDouble() - 0.5) * 0.6, 0, 0.08 + RND.nextDouble() * 0.05, 0);
                 }
@@ -113,23 +118,23 @@ public final class HitEffects {
                     double yy = ey + h * a.age / 16.0;
                     for (int s = 0; s < 2; s++) {
                         double aa = ang + s * Math.PI;
-                        w.addParticle(ParticleTypes.END_ROD, ex + Math.cos(aa) * 0.7, yy, ez + Math.sin(aa) * 0.7, 0, 0.01, 0);
+                        spawn(ParticleTypes.END_ROD, ex + Math.cos(aa) * 0.7, yy, ez + Math.sin(aa) * 0.7, 0, 0.01, 0);
                     }
                 }
                 case 11 -> {
                     for (int s = 0; s < 3; s++) {
                         double aa = RND.nextDouble() * Math.PI * 2;
-                        w.addParticle(ParticleTypes.ENCHANT,
+                        spawn(ParticleTypes.ENCHANT,
                                 ex + Math.cos(aa) * 0.9, ey + h * 0.5 + (RND.nextDouble() - 0.5) * 0.8, ez + Math.sin(aa) * 0.9,
                                 -Math.cos(aa) * 0.3, 0.1, -Math.sin(aa) * 0.3);
                     }
                 }
                 case 12 -> {
                     for (int s = 0; s < 3; s++) {
-                        w.addParticle(ParticleTypes.FLAME, ex, ey + h, ez,
+                        spawn(ParticleTypes.FLAME, ex, ey + h, ez,
                                 (RND.nextDouble() - 0.5) * 0.1, 0.25 + RND.nextDouble() * 0.15, (RND.nextDouble() - 0.5) * 0.1);
                     }
-                    w.addParticle(ParticleTypes.LAVA, ex, ey + h, ez, 0, 0, 0);
+                    spawn(ParticleTypes.LAVA, ex, ey + h, ez, 0, 0, 0);
                 }
                 default -> { }
             }

@@ -26,6 +26,7 @@ public final class TargetRenderer {
             if (world.isClient() && entity instanceof LivingEntity le) {
                 target = le;
                 hitTime = Util.getMeasuringTimeMs();
+                WiklLog.attack(le);
                 DamageNumbers.onHit(le);
                 HitEffects.play(le);
             }

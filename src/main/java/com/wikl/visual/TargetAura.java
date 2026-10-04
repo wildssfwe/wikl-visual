@@ -50,7 +50,7 @@ public final class TargetAura {
                 vx = (RND.nextDouble() - 0.5) * 0.1;
                 vz = (RND.nextDouble() - 0.5) * 0.1;
             }
-            w.addParticle(pt, x, y, z, vx, vy, vz);
+            HitEffects.spawn(pt, x, y, z, vx, vy, vz);
         }
     }
 }
