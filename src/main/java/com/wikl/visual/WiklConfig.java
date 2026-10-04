@@ -96,6 +96,7 @@ public final class WiklConfig {
         WiklSettings.aura = b(p, "aura", WiklSettings.aura);
         WiklSettings.shieldStatus = b(p, "shieldStatus", WiklSettings.shieldStatus);
         WiklSettings.debug = b(p, "debug", WiklSettings.debug);
+        WiklSettings.playerEsp = b(p, "playerEsp", WiklSettings.playerEsp);
         WiklSettings.auraStyle = i(p, "auraStyle", WiklSettings.auraStyle, WiklSettings.AURA_NAMES.length - 1);
         WiklSettings.fastPlaceServers = b(p, "fastPlaceServers", WiklSettings.fastPlaceServers);
         WiklSettings.crossStyle = i(p, "crossStyle", WiklSettings.crossStyle, WiklSettings.CROSS_NAMES.length - 1);
@@ -142,6 +143,7 @@ public final class WiklConfig {
         p.setProperty("aura", String.valueOf(WiklSettings.aura));
         p.setProperty("shieldStatus", String.valueOf(WiklSettings.shieldStatus));
         p.setProperty("debug", String.valueOf(WiklSettings.debug));
+        p.setProperty("playerEsp", String.valueOf(WiklSettings.playerEsp));
         p.setProperty("auraStyle", String.valueOf(WiklSettings.auraStyle));
         p.setProperty("fastPlaceServers", String.valueOf(WiklSettings.fastPlaceServers));
         p.setProperty("crossStyle", String.valueOf(WiklSettings.crossStyle));

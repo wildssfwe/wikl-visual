@@ -36,6 +36,7 @@ public class WiklVisual implements ClientModInitializer {
         DamageNumbers.register();
         EffectCleaner.register();
         ShieldStatus.register();
+        PlayerEsp.register();
 
         ClientTickEvents.START_CLIENT_TICK.register(InvMove::tick);
         ClientTickEvents.START_CLIENT_TICK.register(FpsBoost::tick);

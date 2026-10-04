@@ -73,6 +73,7 @@ public class WiklScreen extends Screen {
             new Module("Полная яркость", "В шахте и ночью всегда светло", () -> WiklSettings.fullbright, v -> WiklSettings.fullbright = v),
             new Module("Без плохих эффектов", "Убирает тьму Вардена, слепоту и тошноту с экрана", () -> WiklSettings.noBadEffects, v -> WiklSettings.noBadEffects = v),
             new Module("Плавная игра (FPS)", "Снимает лимит FPS, выключает V-Sync и тени мобов", () -> WiklSettings.smoothGame, v -> WiklSettings.smoothGame = v),
+            new Module("ESP игроков", "Обводка всех игроков сквозь стены. Может привести к бану!", () -> WiklSettings.playerEsp, v -> WiklSettings.playerEsp = v),
             new Module("Диагностика", "Сообщения над хотбаром при ударе и сломанном щите", () -> WiklSettings.debug, v -> WiklSettings.debug = v),
             new Module("Анимация меню", "Плавное появление меню", () -> WiklSettings.animations, v -> WiklSettings.animations = v),
             new Module("Пульсация", "Анимированная подсветка заголовка", () -> WiklSettings.pulse, v -> WiklSettings.pulse = v)
